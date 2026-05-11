@@ -1,0 +1,37 @@
+# Ignore bundler config.
+/.bundle
+
+# Ignore local environment files.
+/.env*
+
+# Ignore database files.
+/db/*.sqlite3
+/db/*.sqlite3-*
+
+# Ignore generated assets.
+/app/assets/builds/*
+!/app/assets/builds/.keep
+
+# Ignore logs and temporary files.
+/log/*
+!/log/.keep
+/tmp/*
+!/tmp/.keep
+!/tmp/pids
+!/tmp/pids/.keep
+
+# Ignore uploaded files in development.
+/storage/*
+!/storage/.keep
+/tmp/storage/*
+!/tmp/storage/.keep
+
+# Ignore secrets.
+/config/master.key
+/.kamal/secrets
+
+# Ignore dependencies.
+/node_modules
+
+# Ignore system files.
+.DS_Store
