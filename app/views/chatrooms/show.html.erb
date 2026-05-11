@@ -1,0 +1,7 @@
+<% content_for :title, @chatroom.name %>
+
+<div
+  id="chat-room-root"
+  data-chatroom="<%= chatroom_payload(@chatroom).to_json %>"
+  data-messages="<%= messages_payload(@messages).to_json %>"
+></div>
