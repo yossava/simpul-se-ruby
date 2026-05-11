@@ -1,6 +1,8 @@
 require "test_helper"
 
 class MessageTest < ActiveSupport::TestCase
+  include ActionCable::TestHelper
+
   setup do
     @chatroom = chatrooms(:one)
   end
@@ -31,5 +33,19 @@ class MessageTest < ActiveSupport::TestCase
 
     assert_not message.valid?
     assert_includes message.errors[:body], "is too long (maximum is 1000 characters)"
+  end
+
+  test "broadcasts created message" do
+    stream = ChatroomChannel.broadcasting_for(@chatroom)
+
+    broadcasts = capture_broadcasts(stream) do
+      @chatroom.messages.create!(sender_name: "Yos", body: "Hello")
+    end
+
+    payload = broadcasts.first
+
+    assert_equal "message.created", payload.fetch("type")
+    assert_equal "Yos", payload.dig("message", "sender_name")
+    assert_equal "Hello", payload.dig("message", "body")
   end
 end

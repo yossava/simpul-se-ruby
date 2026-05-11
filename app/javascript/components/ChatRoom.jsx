@@ -1,4 +1,5 @@
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
+import consumer from "../channels/consumer"
 
 export default function ChatRoom({ chatroom, initialMessages }) {
   const [messages, setMessages] = useState(initialMessages)
@@ -6,6 +7,39 @@ export default function ChatRoom({ chatroom, initialMessages }) {
   const [body, setBody] = useState("")
   const [errors, setErrors] = useState({})
   const [isSending, setIsSending] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
+
+  useEffect(() => {
+    const subscription = consumer.subscriptions.create(
+      {
+        channel: "ChatroomChannel",
+        chatroom_id: chatroom.id
+      },
+      {
+        connected() {
+          setIsConnected(true)
+        },
+
+        disconnected() {
+          setIsConnected(false)
+        },
+
+        rejected() {
+          setIsConnected(false)
+        },
+
+        received(payload) {
+          if (payload.type === "message.created") {
+            appendMessage(payload.message)
+          }
+        }
+      }
+    )
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [chatroom.id])
 
   async function handleSubmit(event) {
     event.preventDefault()
@@ -34,7 +68,7 @@ export default function ChatRoom({ chatroom, initialMessages }) {
       const payload = await response.json()
 
       if (response.ok) {
-        setMessages((currentMessages) => [...currentMessages, payload.message])
+        appendMessage(payload.message)
         setBody("")
       } else {
         setErrors(payload.errors || {})
@@ -51,7 +85,12 @@ export default function ChatRoom({ chatroom, initialMessages }) {
       <section className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-3xl flex-col rounded-lg border border-slate-800 bg-slate-900 shadow-xl">
         <header className="border-b border-slate-800 px-5 py-4">
           <p className="text-sm font-medium text-teal-300">Public chatroom</p>
-          <h1 className="mt-1 text-2xl font-semibold">{chatroom.name}</h1>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-2xl font-semibold">{chatroom.name}</h1>
+            <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">
+              {isConnected ? "Live" : "Connecting"}
+            </span>
+          </div>
         </header>
 
         <div className="flex-1 space-y-3 overflow-y-auto px-5 py-5">
@@ -77,6 +116,7 @@ export default function ChatRoom({ chatroom, initialMessages }) {
             <label className="block">
               <span className="sr-only">Name</span>
               <input
+                aria-label="Name"
                 className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-teal-300"
                 onChange={(event) => setSenderName(event.target.value)}
                 placeholder="Name"
@@ -89,6 +129,7 @@ export default function ChatRoom({ chatroom, initialMessages }) {
             <label className="block">
               <span className="sr-only">Message</span>
               <input
+                aria-label="Message"
                 className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-teal-300"
                 onChange={(event) => setBody(event.target.value)}
                 placeholder="Message"
@@ -110,6 +151,16 @@ export default function ChatRoom({ chatroom, initialMessages }) {
       </section>
     </main>
   )
+
+  function appendMessage(message) {
+    setMessages((currentMessages) => {
+      if (currentMessages.some((currentMessage) => currentMessage.id === message.id)) {
+        return currentMessages
+      }
+
+      return [...currentMessages, message]
+    })
+  }
 }
 
 function FieldError({ messages }) {
