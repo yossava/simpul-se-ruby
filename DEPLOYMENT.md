@@ -47,11 +47,15 @@ Generate the production secret:
 bin/rails secret
 ```
 
-Use the Neon pooled connection string for `DATABASE_URL` when available.
+Use the direct Neon connection string for `DATABASE_URL`.
+
+Do not use the `-pooler` host for this app. Action Cable uses PostgreSQL
+`LISTEN/NOTIFY` in production, and the pooled Neon URL does not deliver those
+notifications reliably.
 
 ## Database
 
-Production uses the Neon `DATABASE_URL` for the app tables. Cache, jobs, and Action Cable use in-process adapters because the free Render deployment runs as a single web service.
+Production uses the Neon `DATABASE_URL` for the app tables and Action Cable broadcasts. Cache and jobs use in-process adapters because the free Render deployment runs as a single web service.
 
 The build script runs:
 
