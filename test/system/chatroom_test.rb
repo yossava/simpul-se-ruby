@@ -34,4 +34,25 @@ class ChatroomTest < ApplicationSystemTestCase
 
     assert_field "Display name", with: "Yos"
   end
+
+  test "visitor can move between rooms" do
+    visit root_path
+
+    click_on "Random"
+
+    assert_current_path chatroom_path(chatrooms(:two))
+    assert_text "Random"
+  end
+
+  test "visitor can create a room" do
+    visit root_path
+
+    fill_in "New room", with: "Design"
+    click_on "Create room"
+
+    chatroom = Chatroom.find_by!(name: "Design")
+
+    assert_current_path chatroom_path(chatroom)
+    assert_text "Design"
+  end
 end

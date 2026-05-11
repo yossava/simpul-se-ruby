@@ -12,7 +12,7 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   root "chatrooms#show"
 
-  resources :chatrooms, only: [] do
+  resources :chatrooms, only: [ :show, :create ] do
     resources :messages, only: :create
   end
 end

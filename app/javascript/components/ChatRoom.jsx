@@ -14,6 +14,7 @@ import {
   Moon,
   MoreHorizontal,
   Paperclip,
+  Plus,
   Send,
   Smile,
   Sun,
@@ -24,8 +25,6 @@ import consumer from "../channels/consumer"
 
 const BODY_LIMIT = 1_000
 const DISPLAY_NAME_STORAGE_KEY = "displayName"
-
-const navRooms = ["General", "Product-design", "Engineering"]
 
 const tones = {
   light: {
@@ -100,11 +99,14 @@ const tones = {
   }
 }
 
-export default function ChatRoom({ chatroom, initialMessages }) {
+export default function ChatRoom({ chatroom, chatrooms, initialMessages }) {
   const [messages, setMessages] = useState(initialMessages)
   const [senderName, setSenderName] = useState(defaultDisplayName)
   const [body, setBody] = useState("")
   const [errors, setErrors] = useState({})
+  const [newRoomName, setNewRoomName] = useState("")
+  const [newRoomErrors, setNewRoomErrors] = useState([])
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
@@ -210,6 +212,48 @@ export default function ChatRoom({ chatroom, initialMessages }) {
     }
   }
 
+  async function handleCreateRoom(event) {
+    event.preventDefault()
+
+    if (newRoomName.trim().length === 0) {
+      setNewRoomErrors(["Room name can't be blank"])
+      return
+    }
+
+    if (isCreatingRoom) return
+
+    setIsCreatingRoom(true)
+    setNewRoomErrors([])
+
+    try {
+      const response = await fetch("/chatrooms", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken()
+        },
+        body: JSON.stringify({
+          chatroom: {
+            name: newRoomName
+          }
+        })
+      })
+
+      const payload = await response.json()
+
+      if (response.ok) {
+        window.location.assign(`/chatrooms/${payload.chatroom.id}`)
+      } else {
+        setNewRoomErrors(payload.errors?.name || ["Room could not be created."])
+      }
+    } catch {
+      setNewRoomErrors(["Room could not be created. Try again."])
+    } finally {
+      setIsCreatingRoom(false)
+    }
+  }
+
   return (
     <main className={cx("h-dvh overflow-hidden p-2 sm:p-4", tone.page)}>
       <div
@@ -221,9 +265,15 @@ export default function ChatRoom({ chatroom, initialMessages }) {
       >
         <Sidebar
           chatroom={chatroom}
+          chatrooms={chatrooms}
           isCollapsed={isSidebarCollapsed}
+          isCreatingRoom={isCreatingRoom}
           messageCount={messages.length}
+          newRoomErrors={newRoomErrors}
+          newRoomName={newRoomName}
           onClose={() => setIsSidebarOpen(false)}
+          onCreateRoom={handleCreateRoom}
+          onNewRoomNameChange={setNewRoomName}
           onToggleCollapse={() => setIsSidebarCollapsed((currentValue) => !currentValue)}
           participants={participants}
           tone={tone}
@@ -296,10 +346,16 @@ export default function ChatRoom({ chatroom, initialMessages }) {
         >
           <Sidebar
             chatroom={chatroom}
+            chatrooms={chatrooms}
             isCollapsed={false}
+            isCreatingRoom={isCreatingRoom}
             isDrawer
             messageCount={messages.length}
+            newRoomErrors={newRoomErrors}
+            newRoomName={newRoomName}
             onClose={() => setIsSidebarOpen(false)}
+            onCreateRoom={handleCreateRoom}
+            onNewRoomNameChange={setNewRoomName}
             onToggleCollapse={() => setIsSidebarOpen(false)}
             participants={participants}
             tone={tone}
@@ -320,7 +376,22 @@ export default function ChatRoom({ chatroom, initialMessages }) {
   }
 }
 
-function Sidebar({ chatroom, isCollapsed, isDrawer = false, messageCount, onClose, onToggleCollapse, participants, tone }) {
+function Sidebar({
+  chatroom,
+  chatrooms,
+  isCollapsed,
+  isCreatingRoom,
+  isDrawer = false,
+  messageCount,
+  newRoomErrors,
+  newRoomName,
+  onClose,
+  onCreateRoom,
+  onNewRoomNameChange,
+  onToggleCollapse,
+  participants,
+  tone
+}) {
   return (
     <aside
       className={cx(
@@ -367,21 +438,23 @@ function Sidebar({ chatroom, isCollapsed, isDrawer = false, messageCount, onClos
       <nav className={cx("transition-all duration-300 ease-out motion-reduce:transition-none", isCollapsed ? "mt-8 w-full" : "mt-10")}>
         <SidebarSectionTitle isCollapsed={isCollapsed} tone={tone}>Navigation</SidebarSectionTitle>
         <div className={cx("space-y-2", isCollapsed && "flex flex-col items-center")}>
-          {navRooms.map((roomName) => (
-            <div
+          {chatrooms.map((room) => (
+            <a
               className={cx(
                 "flex h-12 items-center rounded-lg text-base transition-all duration-300 ease-out motion-reduce:transition-none",
                 isCollapsed ? "w-12 justify-center px-0" : "gap-3 px-4",
-                roomName === chatroom.name ? tone.sidebarActive : tone.sidebarHover
+                room.id === chatroom.id ? tone.sidebarActive : tone.sidebarHover
               )}
-              key={roomName}
-              title={isCollapsed ? roomName : undefined}
+              href={`/chatrooms/${room.id}`}
+              key={room.id}
+              onClick={onClose}
+              title={isCollapsed ? room.name : undefined}
             >
               <Hash size={20} />
               <SidebarReveal isCollapsed={isCollapsed}>
-                <span>{roomName}</span>
+                <span>{room.name}</span>
               </SidebarReveal>
-            </div>
+            </a>
           ))}
         </div>
       </nav>
@@ -391,6 +464,14 @@ function Sidebar({ chatroom, isCollapsed, isDrawer = false, messageCount, onClos
           <div className="flex flex-col items-center gap-3">
             <IconMetric icon={<UsersRound size={18} />} label="People" tone={tone} value={participants.length} />
             <IconMetric icon={<MessageCircle size={17} />} label="Messages" tone={tone} value={messageCount} />
+            <button
+              aria-label="Expand sidebar to create room"
+              className={cx("flex h-12 w-12 items-center justify-center rounded-lg border transition", tone.sidebarCard)}
+              onClick={onToggleCollapse}
+              type="button"
+            >
+              <Plus size={18} />
+            </button>
           </div>
         ) : (
           <>
@@ -399,9 +480,26 @@ function Sidebar({ chatroom, isCollapsed, isDrawer = false, messageCount, onClos
               <Metric icon={<MessageCircle size={17} />} label="Messages" tone={tone} value={messageCount} />
             </div>
 
-            <button className={cx("h-12 w-full rounded-lg border text-base font-semibold transition", tone.newRoom)} type="button">
-              New Room
-            </button>
+            <form className="space-y-2" onSubmit={onCreateRoom}>
+              <label className="block">
+                <span className={cx("mb-1 block text-xs font-semibold uppercase tracking-wide", tone.sidebarMuted)}>New room</span>
+                <input
+                  aria-label="New room name"
+                  className="h-11 w-full rounded-lg border border-white/25 bg-white/10 px-3 text-sm text-white outline-none ring-4 ring-transparent transition placeholder:text-white/55 focus:border-white/60 focus:ring-white/10"
+                  id="new-room-name"
+                  maxLength={60}
+                  onChange={(event) => onNewRoomNameChange(event.target.value)}
+                  placeholder="Room name"
+                  type="text"
+                  value={newRoomName}
+                />
+              </label>
+              <button className={cx("flex h-11 w-full items-center justify-center gap-2 rounded-lg border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60", tone.newRoom)} disabled={isCreatingRoom} type="submit">
+                <Plus size={17} />
+                {isCreatingRoom ? "Creating" : "Create room"}
+              </button>
+              <FieldError messages={newRoomErrors} />
+            </form>
           </>
         )}
       </div>

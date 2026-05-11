@@ -20,6 +20,7 @@ document.addEventListener("turbo:load", () => {
   createRoot(element).render(
     <ChatRoom
       chatroom={readJson(element, "chatroom", null)}
+      chatrooms={readJson(element, "chatrooms", [])}
       initialMessages={readJson(element, "messages", [])}
     />
   )
