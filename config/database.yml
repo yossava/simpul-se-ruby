@@ -79,10 +79,22 @@ test:
 # Read https://guides.rubyonrails.org/configuring.html#configuring-a-database
 # for a full overview on how database connection configuration can be specified.
 #
+<%
+  production_database_url = ENV["DATABASE_URL"].to_s.strip
+  production_database_url = production_database_url[1...-1] if production_database_url.match?(/\A(['"]).*\1\z/)
+  production_database_url = production_database_url.sub("-pooler.", ".")
+
+  if ENV["RAILS_ENV"] == "production" && production_database_url.empty?
+    raise "DATABASE_URL is required in production"
+  end
+%>
+
 production:
   primary: &primary_production
     <<: *default
-    url: <%= ENV["DATABASE_URL"].inspect %>
+<% unless production_database_url.empty? %>
+    url: <%= production_database_url.inspect %>
+<% end %>
   cache:
     <<: *primary_production
   queue:
