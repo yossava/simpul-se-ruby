@@ -23,6 +23,7 @@ import {
 import consumer from "../channels/consumer"
 
 const BODY_LIMIT = 1_000
+const DISPLAY_NAME_STORAGE_KEY = "displayName"
 
 const navRooms = ["General", "Product-design", "Engineering"]
 
@@ -101,7 +102,7 @@ const tones = {
 
 export default function ChatRoom({ chatroom, initialMessages }) {
   const [messages, setMessages] = useState(initialMessages)
-  const [senderName, setSenderName] = useState("")
+  const [senderName, setSenderName] = useState(defaultDisplayName)
   const [body, setBody] = useState("")
   const [errors, setErrors] = useState({})
   const [isSending, setIsSending] = useState(false)
@@ -150,6 +151,14 @@ export default function ChatRoom({ chatroom, initialMessages }) {
   useEffect(() => {
     window.localStorage.setItem("theme", theme)
   }, [theme])
+
+  useEffect(() => {
+    if (senderName.trim().length > 0) {
+      window.localStorage.setItem(DISPLAY_NAME_STORAGE_KEY, senderName)
+    } else {
+      window.localStorage.removeItem(DISPLAY_NAME_STORAGE_KEY)
+    }
+  }, [senderName])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
@@ -746,6 +755,10 @@ function defaultTheme() {
   if (savedTheme === "light" || savedTheme === "dark") return savedTheme
 
   return "light"
+}
+
+function defaultDisplayName() {
+  return window.localStorage.getItem(DISPLAY_NAME_STORAGE_KEY) || ""
 }
 
 function validateMessage(senderName, body) {

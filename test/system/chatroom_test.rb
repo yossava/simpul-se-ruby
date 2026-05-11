@@ -25,4 +25,13 @@ class ChatroomTest < ApplicationSystemTestCase
 
     assert_selector "button[aria-label='Collapse sidebar']"
   end
+
+  test "display name survives page refresh" do
+    visit root_path
+
+    fill_in "Display name", with: "Yos"
+    refresh
+
+    assert_field "Display name", with: "Yos"
+  end
 end
