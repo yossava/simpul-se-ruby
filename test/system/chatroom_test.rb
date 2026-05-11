@@ -6,11 +6,23 @@ class ChatroomTest < ApplicationSystemTestCase
 
     assert_text "General"
 
-    fill_in "Name", with: "Yos"
+    fill_in "Display name", with: "Yos"
     fill_in "Message", with: "Hello from the browser"
     click_on "Send"
 
     assert_text "Yos"
     assert_text "Hello from the browser"
+  end
+
+  test "visitor can collapse and expand the sidebar" do
+    visit root_path
+
+    find("button[aria-label='Collapse sidebar']").click
+
+    assert_selector "button[aria-label='Expand sidebar']"
+
+    find("button[aria-label='Expand sidebar']").click
+
+    assert_selector "button[aria-label='Collapse sidebar']"
   end
 end
