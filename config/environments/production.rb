@@ -24,8 +24,12 @@ Rails.application.configure do
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
 
-  # Assume all access to the app is happening through a SSL-terminating reverse proxy.
-  # config.assume_ssl = true
+  # Render terminates HTTPS before the request reaches Rails.
+  config.assume_ssl = true
+
+  app_host = ENV.fetch("APP_HOST", "simpul-se-ruby.onrender.com")
+  config.action_cable.url = "wss://#{app_host}/cable"
+  config.action_cable.allowed_request_origins = [ "https://#{app_host}" ]
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
   # config.force_ssl = true
