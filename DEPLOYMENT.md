@@ -33,7 +33,6 @@ DATABASE_URL=<neon-postgres-url>
 RAILS_MASTER_KEY=<config-master-key>
 SECRET_KEY_BASE=<generated-secret>
 RAILS_SERVE_STATIC_FILES=true
-SOLID_QUEUE_IN_PUMA=true
 ```
 
 Get the Rails master key locally:
@@ -52,7 +51,7 @@ Use the Neon pooled connection string for `DATABASE_URL` when available.
 
 ## Database
 
-Production uses the same Neon `DATABASE_URL` for the primary app tables, Solid Cache, Solid Queue, and Solid Cable.
+Production uses the Neon `DATABASE_URL` for the app tables. Cache, jobs, and Action Cable use in-process adapters because the free Render deployment runs as a single web service.
 
 The build script runs:
 
@@ -77,3 +76,4 @@ After deploy:
 - Free services can sleep after inactivity.
 - The first request after sleep can be slow.
 - Keep `.env` local only. Put production values in Render environment variables.
+- Do not set `SOLID_QUEUE_IN_PUMA` on Render for this app.
