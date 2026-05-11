@@ -43,5 +43,12 @@ function unmountChatRoom() {
   }
 }
 
+function prepareChatRoomCache() {
+  if (chatRoomElement) {
+    delete chatRoomElement.dataset.mounted
+  }
+}
+
 document.addEventListener("turbo:load", mountChatRoom)
-document.addEventListener("turbo:before-cache", unmountChatRoom)
+document.addEventListener("turbo:before-cache", prepareChatRoomCache)
+document.addEventListener("turbo:before-render", unmountChatRoom)
