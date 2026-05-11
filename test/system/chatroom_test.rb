@@ -35,6 +35,34 @@ class ChatroomTest < ApplicationSystemTestCase
     assert_field "Display name", with: "Yos"
   end
 
+  test "visitor can format message text as bold" do
+    visit root_path
+
+    fill_in "Display name", with: "Yos"
+    fill_in "Message", with: "bold text"
+    find("button[aria-label='Bold message text']").click
+
+    assert_field "Message", with: "**bold text**"
+
+    click_on "Send"
+
+    assert_selector "strong", text: "bold text"
+  end
+
+  test "visitor can format message text as italic" do
+    visit root_path
+
+    fill_in "Display name", with: "Yos"
+    fill_in "Message", with: "italic text"
+    find("button[aria-label='Italic message text']").click
+
+    assert_field "Message", with: "*italic text*"
+
+    click_on "Send"
+
+    assert_selector "em", text: "italic text"
+  end
+
   test "visitor can move between rooms" do
     visit root_path
 

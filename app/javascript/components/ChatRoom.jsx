@@ -12,13 +12,9 @@ import {
   Menu,
   MessageCircle,
   Moon,
-  MoreHorizontal,
-  Paperclip,
   Plus,
   Send,
-  Smile,
   Sun,
-  Underline,
   UsersRound
 } from "lucide-react"
 import consumer from "../channels/consumer"
@@ -301,12 +297,11 @@ export default function ChatRoom({ chatroom, chatrooms, initialMessages }) {
               {messages.length === 0 ? (
                 <EmptyState tone={tone} />
               ) : (
-                messages.map((message, index) => (
+                messages.map((message) => (
                   <MessageBubble
                     key={message.id}
                     isOwn={sameSender(message.sender_name, senderName)}
                     message={message}
-                    showActions={index < 4}
                     tone={tone}
                   />
                 ))
@@ -600,6 +595,45 @@ function RoomSummary({ chatroom, messageCount, participants, tone }) {
 }
 
 function Composer({ body, errors, isSending, onBodyChange, onSenderNameChange, onSubmit, senderName, tone }) {
+  const textareaRef = useRef(null)
+
+  function handleFormatClick(marker, fallbackText) {
+    const textarea = textareaRef.current
+
+    if (!textarea) return
+
+    const markerLength = marker.length
+    const selectionStart = textarea.selectionStart
+    const selectionEnd = textarea.selectionEnd
+    const hasSelection = selectionStart !== selectionEnd
+    const selectedText = body.slice(selectionStart, selectionEnd)
+
+    let nextBody
+    let nextSelectionStart
+    let nextSelectionEnd
+
+    if (hasSelection) {
+      nextBody = `${body.slice(0, selectionStart)}${marker}${selectedText}${marker}${body.slice(selectionEnd)}`
+      nextSelectionStart = selectionStart + markerLength
+      nextSelectionEnd = nextSelectionStart + selectedText.length
+    } else if (body.length > 0) {
+      nextBody = `${marker}${body}${marker}`
+      nextSelectionStart = markerLength
+      nextSelectionEnd = nextBody.length - markerLength
+    } else {
+      nextBody = `${marker}${fallbackText}${marker}`
+      nextSelectionStart = markerLength
+      nextSelectionEnd = nextSelectionStart + fallbackText.length
+    }
+
+    onBodyChange(nextBody)
+
+    requestAnimationFrame(() => {
+      textarea.focus()
+      textarea.setSelectionRange(nextSelectionStart, nextSelectionEnd)
+    })
+  }
+
   return (
     <form className={cx("shrink-0 border-t px-4 py-3 sm:px-8", tone.composer)} onSubmit={onSubmit}>
       <div className="mx-auto max-w-4xl">
@@ -622,12 +656,22 @@ function Composer({ body, errors, isSending, onBodyChange, onSenderNameChange, o
           <div className={cx("overflow-hidden rounded-lg border", errors.body?.length ? "border-rose-400" : tone.editor)}>
             <div className="flex justify-end px-2 pt-2">
               <div className={cx("flex h-9 items-center gap-3 rounded-lg border px-3", tone.toolbar)}>
-                <Smile size={18} />
-                <span className="h-5 border-l border-inherit" />
-                <Bold size={17} />
-                <Italic size={17} />
-                <Underline size={17} />
-                <MoreHorizontal size={18} />
+                <button
+                  aria-label="Bold message text"
+                  className="flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-current/10"
+                  onClick={() => handleFormatClick("**", "bold text")}
+                  type="button"
+                >
+                  <Bold size={17} />
+                </button>
+                <button
+                  aria-label="Italic message text"
+                  className="flex h-7 w-7 items-center justify-center rounded-md transition hover:bg-current/10"
+                  onClick={() => handleFormatClick("*", "italic text")}
+                  type="button"
+                >
+                  <Italic size={17} />
+                </button>
               </div>
             </div>
 
@@ -643,18 +687,15 @@ function Composer({ body, errors, isSending, onBodyChange, onSenderNameChange, o
                 }
               }}
               placeholder="Write a message"
+              ref={textareaRef}
               rows={2}
               value={body}
             />
 
             <div className="flex items-center justify-between border-t border-inherit px-4 py-2">
-              <div className={cx("flex items-center gap-4", tone.subtle)}>
-                <Smile size={20} />
-                <Paperclip size={20} />
-              </div>
+              <p className={cx("text-xs", tone.subtle)}>{body.length}/{BODY_LIMIT}</p>
 
               <div className="flex items-center gap-3">
-                <p className={cx("text-xs", tone.subtle)}>{body.length}/{BODY_LIMIT}</p>
                 <button className={cx("flex h-10 overflow-hidden rounded-lg text-sm font-semibold transition disabled:cursor-not-allowed", tone.button)} disabled={isSending} type="submit">
                   <span className="flex items-center gap-2 px-4">
                     <Send size={17} />
@@ -697,7 +738,7 @@ function EmptyState({ tone }) {
   )
 }
 
-function MessageBubble({ isOwn, message, showActions, tone }) {
+function MessageBubble({ isOwn, message, tone }) {
   return (
     <article className={cx("group flex items-start gap-3", isOwn && "justify-end")}>
       {!isOwn && <Avatar name={message.sender_name} size="lg" tone={tone} />}
@@ -709,7 +750,7 @@ function MessageBubble({ isOwn, message, showActions, tone }) {
         </div>
 
         <div className={cx("inline-block max-w-full rounded-lg px-4 py-3", isOwn ? `rounded-tr-sm ${tone.ownBubble}` : `rounded-tl-sm ${tone.bubble}`)}>
-          <p className="whitespace-pre-wrap break-words text-sm leading-6">{message.body}</p>
+          <p className="whitespace-pre-wrap break-words text-sm leading-6">{messageParts(message.body)}</p>
         </div>
 
         {isOwn && (
@@ -719,18 +760,7 @@ function MessageBubble({ isOwn, message, showActions, tone }) {
           </div>
         )}
       </div>
-
-      {!isOwn && showActions && <MessageActions tone={tone} />}
     </article>
-  )
-}
-
-function MessageActions({ tone }) {
-  return (
-    <div className={cx("ml-auto hidden h-8 items-center gap-2 rounded-lg px-2 lg:flex", tone.messageAction)}>
-      <Smile size={16} />
-      <MoreHorizontal size={17} />
-    </div>
   )
 }
 
@@ -841,6 +871,33 @@ function formatTime(value) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value))
+}
+
+function messageParts(value) {
+  const parts = []
+  const inlinePattern = /\*\*([\s\S]+?)\*\*|\*([^*]+?)\*/g
+  let lastIndex = 0
+  let match
+
+  while ((match = inlinePattern.exec(value)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(value.slice(lastIndex, match.index))
+    }
+
+    if (match[1]) {
+      parts.push(<strong key={`bold-${match.index}`}>{match[1]}</strong>)
+    } else {
+      parts.push(<em key={`italic-${match.index}`}>{match[2]}</em>)
+    }
+
+    lastIndex = inlinePattern.lastIndex
+  }
+
+  if (lastIndex < value.length) {
+    parts.push(value.slice(lastIndex))
+  }
+
+  return parts
 }
 
 function csrfToken() {
