@@ -174,8 +174,13 @@ export default function ChatRoom({ chatroom, chatrooms, initialMessages }) {
 
     if (isSending) return
 
+    const messageBody = body
+    const optimisticMessage = buildOptimisticMessage(senderName, messageBody)
+
     setIsSending(true)
     setErrors({})
+    setBody("")
+    appendMessage(optimisticMessage)
 
     try {
       const response = await fetch(`/chatrooms/${chatroom.id}/messages`, {
@@ -188,7 +193,7 @@ export default function ChatRoom({ chatroom, chatrooms, initialMessages }) {
         body: JSON.stringify({
           message: {
             sender_name: senderName,
-            body
+            body: messageBody
           }
         })
       })
@@ -196,12 +201,15 @@ export default function ChatRoom({ chatroom, chatrooms, initialMessages }) {
       const payload = await response.json()
 
       if (response.ok) {
-        appendMessage(payload.message)
-        setBody("")
+        confirmMessage(optimisticMessage.id, payload.message)
       } else {
+        removeMessage(optimisticMessage.id)
+        setBody(messageBody)
         setErrors(payload.errors || {})
       }
     } catch {
+      removeMessage(optimisticMessage.id)
+      setBody(messageBody)
       setErrors({ body: ["Message could not be sent. Try again."] })
     } finally {
       setIsSending(false)
@@ -368,6 +376,24 @@ export default function ChatRoom({ chatroom, chatrooms, initialMessages }) {
 
       return [...currentMessages, message]
     })
+  }
+
+  function confirmMessage(pendingId, confirmedMessage) {
+    setMessages((currentMessages) => {
+      const hasConfirmedMessage = currentMessages.some((message) => message.id === confirmedMessage.id)
+
+      return currentMessages.flatMap((message) => {
+        if (message.id === pendingId) {
+          return hasConfirmedMessage ? [] : [confirmedMessage]
+        }
+
+        return [message]
+      })
+    })
+  }
+
+  function removeMessage(messageId) {
+    setMessages((currentMessages) => currentMessages.filter((message) => message.id !== messageId))
   }
 }
 
@@ -739,8 +765,10 @@ function EmptyState({ tone }) {
 }
 
 function MessageBubble({ isOwn, message, tone }) {
+  const isPending = message.status === "pending"
+
   return (
-    <article className={cx("group flex items-start gap-3", isOwn && "justify-end")}>
+    <article className={cx("group flex items-start gap-3", isOwn && "justify-end", isPending && "opacity-75")}>
       {!isOwn && <Avatar name={message.sender_name} size="lg" tone={tone} />}
 
       <div className={cx("min-w-0 max-w-[78%]", isOwn ? "text-right" : "flex-1")}>
@@ -755,8 +783,8 @@ function MessageBubble({ isOwn, message, tone }) {
 
         {isOwn && (
           <div className={cx("mt-1 flex items-center justify-end gap-1 text-xs", tone.subtle)}>
-            <span>read</span>
-            <Check size={14} />
+            <span>{isPending ? "sending" : "read"}</span>
+            {!isPending && <Check size={14} />}
           </div>
         )}
       </div>
@@ -871,6 +899,20 @@ function formatTime(value) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value))
+}
+
+function buildOptimisticMessage(senderName, body) {
+  return {
+    id: `pending-${messageToken()}`,
+    sender_name: senderName,
+    body,
+    created_at: new Date().toISOString(),
+    status: "pending"
+  }
+}
+
+function messageToken() {
+  return window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
 function messageParts(value) {

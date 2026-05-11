@@ -63,6 +63,34 @@ class ChatroomTest < ApplicationSystemTestCase
     assert_selector "em", text: "italic text"
   end
 
+  test "message appears before the server responds" do
+    visit root_path
+
+    page.execute_script("window.fetch = () => new Promise(() => {})")
+
+    fill_in "Display name", with: "Yos"
+    fill_in "Message", with: "Optimistic hello"
+    click_on "Send"
+
+    assert_field "Message", with: ""
+    assert_text "Optimistic hello"
+    assert_text "sending"
+  end
+
+  test "failed message is restored to the composer" do
+    visit root_path
+
+    page.execute_script("window.fetch = () => Promise.reject(new Error('offline'))")
+
+    fill_in "Display name", with: "Yos"
+    fill_in "Message", with: "Bring this back"
+    click_on "Send"
+
+    assert_field "Message", with: "Bring this back"
+    assert_no_text "sending"
+    assert_text "Message could not be sent. Try again."
+  end
+
   test "visitor can move between rooms" do
     visit root_path
 
